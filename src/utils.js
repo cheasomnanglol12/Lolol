@@ -84,4 +84,40 @@ if (sleepDuration >= 60) {
     sleepUnit = (tempVar > 1) ? 'minutes' : 'minute';
 }
 
-module.exports = { games, urls, sleep, commands, keysFiles, TrackedPromise, sleepDuration, sleepUnit, batchSize };
+const fs = require('fs');
+const path = require('path');
+const userFiles = path.join(__dirname, '../assets/Keys/Bot_Users.json');
+
+async function getUserName(users, id) {
+    for (let user of users) {
+        if (user.id === id) {
+            return user.username;
+        }
+    }
+}
+
+const botBlockedHandler = async (err, userFiles, chatId) => {
+    if (err.message.includes('blocked')) {
+        const userInfo = fs.readFileSync(userFiles);
+        const users = JSON.parse(userInfo);
+        const userName = await getUserName(users, chatId);
+        console.error(`Bot was blocked by the user \x1b[32m${userName}\x1b[0m`);
+    }
+}
+
+async function tryCatchBlock(fn, chatId) {
+    try {
+        const result = await fn();
+        return result;
+    } catch (err) {
+        if (err.message.includes('blocked')) {
+            await botBlockedHandler(err, userFiles, chatId);
+        }
+        else {
+            console.error(err.message);
+            return null;
+        }
+    }
+}
+
+module.exports = { games, urls, sleep, commands, keysFiles, TrackedPromise, sleepDuration, sleepUnit, batchSize, tryCatchBlock };

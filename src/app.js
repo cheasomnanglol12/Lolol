@@ -6,7 +6,7 @@ const fs = require('fs');
 const express = require('express');
 const app = express();
 const axios = require('axios');
-const { games, commands, keysFiles, sleep, TrackedPromise, sleepDuration, batchSize } = require('./utils');
+const { games, commands, keysFiles, sleep, TrackedPromise, sleepDuration, batchSize, tryCatchBlock } = require('./utils');
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
 
 app.listen(3000, () => {
@@ -27,7 +27,7 @@ async function sendKeys(msg, filePath) {
         if (userKeys.length > 0) {
             let keysToSend = userKeys.slice(0, 4);
             keysToSend = keysToSend.map(key => `\`${key}\``);
-            bot.sendMessage(msg.chat.id, keysToSend.join('\n\n'), {
+            await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, keysToSend.join('\n\n'), {
                 parse_mode: 'Markdown',
                 reply_markup: {
                     inline_keyboard: [
@@ -39,21 +39,21 @@ async function sendKeys(msg, filePath) {
                         ]
                     ]
                 }
-            });
+            }));
             keys[msg.chat.id] = userKeys.slice(4);
             fs.writeFileSync(filePath, JSON.stringify(keys, null, 2));
         }
         else {
-            bot.sendMessage(msg.chat.id, 'You have no keys left. Use /generatekeys to generate keys');
+            await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, 'You have no keys left. Use /generatekeys to generate keys'))
         }
     }
     else {
-        bot.sendMessage(msg.chat.id, 'You have no keys left. Use /generatekeys to generate keys');
+        await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, 'You have no keys left. Use /generatekeys to generate keys'));
     }
 }
 
-bot.onText('/start', (msg) => {
-    bot.sendMessage(msg.chat.id, 'Welcome to the Hamster Key Generator Bot!');
+bot.onText('/start', async (msg) => {
+    await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, 'Welcome to the Hamster Key Generator Bot!'), msg.chat.id);
     const userInfo = {
         id: msg.chat.id,
         username: msg.chat.username,
@@ -84,13 +84,13 @@ bot.onText('/remaining', async (msg) => {
         }
     });
     if (userFound) {
-        bot.sendMessage(msg.chat.id, keys.join('\n'));
+        await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, keys.join('\n')));
     }
     else {
         keysFiles.forEach(file => {
             keys.push(`${file.replace('_keys.json', '')}: 0`);
         });
-        bot.sendMessage(msg.chat.id, keys.join('\n'));
+        await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, keys.join('\n')));
     }
 });
 
@@ -163,13 +163,14 @@ bot.onText('/getkeys', (msg) => {
     });
 });
 
-bot.onText('/generatekeys', (msg) => {
+bot.onText('/generatekeys', async (msg) => {
     let rows = showInlineKeyboard('generate');
-    bot.sendMessage(msg.chat.id, 'Select a game to generate keys', {
+    await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, 'Select a game to generate keys', {
         reply_markup: {
             inline_keyboard: rows
         }
-    });
+    }));
+
 });
 
 bot.on('callback_query', async (callbackQuery) => {
@@ -182,7 +183,7 @@ bot.on('callback_query', async (callbackQuery) => {
             let msgtodel = await bot.sendMessage(msg.chat.id, `Generating ${game} keys...`);
             await getKeys(game, 4, msg.chat.id);
             bot.deleteMessage(msg.chat.id, msgtodel.message_id);
-            bot.sendMessage(msg.chat.id, `${game} keys have been generated!`);
+            await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, `${game} keys have been generated!`));
         };
     }
     else if (data === 'delete') {

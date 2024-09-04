@@ -7,7 +7,7 @@ const express = require('express');
 const app = express();
 const axios = require('axios');
 const admin = '7070127929';
-const { games, commands, keysFiles, sleep, TrackedPromise, sleepDuration } = require('./utils');
+const { games, commands, keysFiles, sleep, TrackedPromise, sleepDuration, batchSize, tryCatchBlock } = require('./utils');
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
 
 app.listen(3000, () => {
@@ -28,28 +28,15 @@ async function sendKeys(msg, filePath) {
         if (userKeys.length > 0) {
             let keysToSend = userKeys.slice(0, 4);
             keysToSend = keysToSend.map(key => `\`${key}\``);
-            bot.sendMessage(msg.chat.id, keysToSend.join('\n\n'), {
-                parse_mode: 'Markdown',
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            {
-                                text: '🗑️',
-                                callback_data: 'delete'
-                            }
-                        ]
-                    ]
-                }
-            });
             keys[msg.chat.id] = userKeys.slice(4);
             fs.writeFileSync(filePath, JSON.stringify(keys, null, 2));
         }
         else {
-            bot.sendMessage(msg.chat.id, 'You have no keys left. Use /generatekeys to generate keys');
+            await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, 'You have no keys left. Use /generatekeys to generate keys'), msg.chat.id);
         }
     }
     else {
-        bot.sendMessage(msg.chat.id, 'You have no keys left. Use /generatekeys to generate keys');
+        await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, 'You have no keys left. Use /generatekeys to generate keys'), msg.chat.id);
     }
 }
 
@@ -63,8 +50,8 @@ bot.onText(new RegExp('.'), (msg) => {
     informAdmin(msg, `${msg.chat.first_name} sent a message: ${msg.text}`);
 });
 
-bot.onText('/start', (msg) => {
-    bot.sendMessage(msg.chat.id, 'Welcome to the Hamster Key Generator Bot!');
+bot.onText('/start', async (msg) => {
+    await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, 'Welcome to the Hamster Key Generator Bot!'), msg.chat.id);
     const userInfo = {
         id: msg.chat.id,
         username: msg.chat.username,
@@ -96,13 +83,13 @@ bot.onText('/remaining', async (msg) => {
         }
     });
     if (userFound) {
-        bot.sendMessage(msg.chat.id, keys.join('\n'));
+        await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, keys.join('\n')), msg.chat.id);
     }
     else {
         keysFiles.forEach(file => {
             keys.push(`${file.replace('_keys.json', '')}: 0`);
         });
-        bot.sendMessage(msg.chat.id, keys.join('\n'));
+        await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, keys.join('\n')), msg.chat.id);
     }
     informAdmin(msg, `${msg.chat.first_name} requested remaining keys`);
 });
@@ -114,23 +101,22 @@ bot.onText('/users', async (msg) => {
         const users = JSON.parse(fs.readFileSync(filePath));
 
         if (users.length === 0) {
-            bot.sendMessage(msg.chat.id, 'No users found');
+            await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, 'No users found'), msg.chat.id);
             return;
         }
         const list = users.map(user =>
             `${user.first_name}${user.last_name ? ` ${user.last_name}` : ''}${user.username ? `: @${user.username}` : ''}`
         );
-        bot.sendMessage(msg.chat.id, list.join('\n'));
+        await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, list.join('\n')), msg.chat.id);
     }
     else {
-        bot.sendMessage(msg.chat.id, 'Only admin can use this command');
-        bot.sendMessage(admin, `${msg.chat.first_name} tried to access users list`);
+        await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, 'Only admin can use this command'), msg.chat.id);
+        informAdmin(msg, `${msg.chat.first_name} tried to access users list`);
     }
 });
 
 async function generateAllKeys(msg) {
     const tasks = [];
-    let batchSize = 1;
     const keyTypes = Object.keys(games);
     for (const keyType of keyTypes) {
         tasks.push(() => new TrackedPromise(getKeys(keyType, 4, msg.chat.id), keyType));
@@ -141,7 +127,7 @@ async function generateAllKeys(msg) {
         while (index < tasks.length) {
             if (activeTasks.length < batchSize) {
                 activeTasks.push(tasks[index]());
-                let message = await bot.sendMessage(msg.chat.id, `Generating ${keyTypes[index]} keys...`);
+                let message = await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, `Generating ${keyTypes[index]} keys...`), msg.chat.id);
                 messageIds.push({
                     keyType: keyTypes[index],
                     messageId: message.message_id
@@ -151,10 +137,10 @@ async function generateAllKeys(msg) {
             }
             else {
                 await Promise.race(activeTasks.map(task => task.promise));
-                activeTasks = activeTasks.filter(task => {
+                activeTasks = activeTasks.filter(async (task) => {
                     if (task.isPending()) { return true; }
                     else {
-                        bot.sendMessage(msg.chat.id, `${task.getGame()} keys have been generated!`);
+                        await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, `${task.getGame()} keys have been generated!`), msg.chat.id);
                         let toDeleteMsg = messageIds.find(message => message.keyType === task.getGame());
                         bot.deleteMessage(msg.chat.id, toDeleteMsg.messageId);
                         messageIds = messageIds.filter(message => message.keyType !== task.getGame());
@@ -163,8 +149,8 @@ async function generateAllKeys(msg) {
                 });
             }
         }
-        activeTasks.map(task => task.promise.then(() => {
-            bot.sendMessage(msg.chat.id, `${task.getGame()} keys have been generated!`);
+        activeTasks.map(task => task.promise.then(async () => {
+            await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, `${task.getGame()} keys have been generated!`), msg.chat.id);
             let toDeleteMsg = messageIds.find(message => message.keyType === task.getGame());
             bot.deleteMessage(msg.chat.id, toDeleteMsg.messageId);
             messageIds = messageIds.filter(message => message.keyType !== task.getGame());
@@ -172,7 +158,7 @@ async function generateAllKeys(msg) {
         informAdmin(msg, `${msg.chat.first_name} successfully generated all keys`);
     } catch (error) {
         console.error(error);
-        bot.sendMessage(msg.chat.id, 'Error generating keys: ' + error);
+        await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, 'Error generating keys: ' + error), msg.chat.id);
     }
 }
 
@@ -191,22 +177,22 @@ function showInlineKeyboard(type) {
     return rows;
 }
 
-bot.onText('/getkeys', (msg) => {
+bot.onText('/getkeys', async (msg) => {
     let rows = showInlineKeyboard('get');
-    bot.sendMessage(msg.chat.id, 'Select a game to get keys', {
+    await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, 'Select a game to get keys', {
         reply_markup: {
             inline_keyboard: rows
         }
-    });
+    }), msg.chat.id);
 });
 
-bot.onText('/generatekeys', (msg) => {
+bot.onText('/generatekeys', async (msg) => {
     let rows = showInlineKeyboard('generate');
-    bot.sendMessage(msg.chat.id, 'Select a game to generate keys', {
+    await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, 'Select a game to generate keys', {
         reply_markup: {
             inline_keyboard: rows
         }
-    });
+    }), msg.chat.id);
 });
 
 bot.on('callback_query', async (callbackQuery) => {
@@ -216,10 +202,10 @@ bot.on('callback_query', async (callbackQuery) => {
     if (data.startsWith('generate')) {
         const game = data.replace('generate', '');
         if (game === 'All') { generateAllKeys(msg) } else {
-            let msgtodel = await bot.sendMessage(msg.chat.id, `Generating ${game} keys...`);
+            let msgtodel = await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, `Generating ${game} keys...`), msg.chat.id);
             await getKeys(game, 4, msg.chat.id);
             bot.deleteMessage(msg.chat.id, msgtodel.message_id);
-            bot.sendMessage(msg.chat.id, `${game} keys have been generated!`);
+            await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, `${game} keys have been generated!`), msg.chat.id);
         };
     }
     else if (data === 'delete') {
