@@ -130,7 +130,7 @@ bot.onText('/users', async (msg) => {
 
 async function generateAllKeys(msg) {
     const tasks = [];
-    let batchSize = 2;
+    let batchSize = 1;
     const keyTypes = Object.keys(games);
     for (const keyType of keyTypes) {
         tasks.push(() => new TrackedPromise(getKeys(keyType, 4, msg.chat.id), keyType));
