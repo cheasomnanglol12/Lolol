@@ -6,7 +6,7 @@ const fs = require('fs');
 const express = require('express');
 const app = express();
 const axios = require('axios');
-const { games, commands, keysFiles, sleep, TrackedPromise, sleepDuration } = require('./utils');
+const { games, commands, keysFiles, sleep, TrackedPromise, sleepDuration, batchSize } = require('./utils');
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
 
 app.listen(3000, () => {
@@ -96,7 +96,6 @@ bot.onText('/remaining', async (msg) => {
 
 async function generateAllKeys(msg) {
     const tasks = [];
-    let batchSize = 2;
     const keyTypes = Object.keys(games);
     for (const keyType of keyTypes) {
         tasks.push(() => new TrackedPromise(getKeys(keyType, 4, msg.chat.id), keyType));

@@ -30,13 +30,11 @@ const games = {
     'Fluff': {
         appToken: '112887b0-a8af-4eb2-ac63-d82df78283d9',
         promoId: '112887b0-a8af-4eb2-ac63-d82df78283d9'
-    },
-    'Tile': {
-        appToken: 'e68b39d2-4880-4a31-b3aa-0393e7df10c7',
-        promoId: 'e68b39d2-4880-4a31-b3aa-0393e7df10c7'
     }
-
 }
+
+const batchSize = 1;
+
 const urls = {
     login: 'https://api.gamepromo.io/promo/login-client',
     register: 'https://api.gamepromo.io/promo/register-event',
@@ -86,4 +84,4 @@ if (sleepDuration >= 60) {
     sleepUnit = (tempVar > 1) ? 'minutes' : 'minute';
 }
 
-module.exports = { games, urls, sleep, commands, keysFiles, TrackedPromise, sleepDuration, sleepUnit };
+module.exports = { games, urls, sleep, commands, keysFiles, TrackedPromise, sleepDuration, sleepUnit, batchSize };
