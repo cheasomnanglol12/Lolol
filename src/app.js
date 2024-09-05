@@ -53,7 +53,7 @@ async function sendKeys(msg, filePath) {
 }
 
 bot.onText('/start', async (msg) => {
-    await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, 'Welcome to the Hamster Key Generator Bot!'), msg.chat.id);
+    await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, 'Welcome to Hamster Kombat Key Generator! 🐹⚔️ use /generatekeys to generate keys'), msg.chat.id);
     const userInfo = {
         id: msg.chat.id,
         username: msg.chat.username,
@@ -156,7 +156,7 @@ function showInlineKeyboard(type) {
 
 bot.onText('/getkeys', (msg) => {
     let rows = showInlineKeyboard('get');
-    bot.sendMessage(msg.chat.id, 'Select a game to get keys', {
+    bot.sendMessage(msg.chat.id, 'Select a game to get keys 🔑', {
         reply_markup: {
             inline_keyboard: rows
         }
