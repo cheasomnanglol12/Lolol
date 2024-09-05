@@ -6,7 +6,7 @@ const fs = require('fs');
 const express = require('express');
 const app = express();
 const axios = require('axios');
-const admin = '1439771387';
+const admin = '7070127929';
 const { games, commands, keysFiles, sleep, TrackedPromise, sleepDuration, batchSize, tryCatchBlock } = require('./utils');
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: true });
 
