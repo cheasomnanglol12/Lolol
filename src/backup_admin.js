@@ -28,6 +28,19 @@ async function sendKeys(msg, filePath) {
         if (userKeys.length > 0) {
             let keysToSend = userKeys.slice(0, 4);
             keysToSend = keysToSend.map(key => `\`${key}\``);
+            await tryCatchBlock(async () => await bot.sendMessage(msg.chat.id, keysToSend.join('\n\n'), {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            {
+                                text: '🗑️',
+                                callback_data: 'delete'
+                            }
+                        ]
+                    ]
+                }
+            }));
             keys[msg.chat.id] = userKeys.slice(4);
             fs.writeFileSync(filePath, JSON.stringify(keys, null, 2));
         }
