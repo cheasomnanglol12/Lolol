@@ -30,6 +30,10 @@ const games = {
     'Fluff': {
         appToken: '112887b0-a8af-4eb2-ac63-d82df78283d9',
         promoId: '112887b0-a8af-4eb2-ac63-d82df78283d9'
+    },
+    'Tile': {
+        appToken: 'e68b39d2-4880-4a31-b3aa-0393e7df10c7',
+        promoId: 'e68b39d2-4880-4a31-b3aa-0393e7df10c7'
     }
 }
 
